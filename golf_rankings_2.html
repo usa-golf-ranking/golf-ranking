@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>US Course Rankings</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f5f5f0;color:#1a1a1a;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* HEADER - light mode */
+#header{background:#2D5016;border-bottom:2px solid #c9a84c;padding:12px 24px;flex-shrink:0;display:flex;align-items:center;gap:16px}
+#header h1{font-size:22px;color:#f0e8d0;letter-spacing:1px;font-weight:700}
+
+/* MAIN SPLIT */
+#main{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* MAP PANEL */
+#map-panel{flex:1;display:flex;flex-direction:column;min-width:0;border-right:2px solid #c9a84c}
+#map{flex:1;min-height:0}
+
+.leg-item{display:flex;align-items:center;gap:4px;font-size:11px;color:#666}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* RIGHT PANEL */
+#right-panel{width:460px;flex-shrink:0;display:flex;flex-direction:column;background:#f5f5f0;overflow:hidden;position:relative}
+
+/* CONTROLS - 2 rows, full width of right panel */
+#controls{background:#e8e4dc;border-bottom:2px solid #c9a84c;padding:8px 12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+.ctrl-row{display:flex;gap:8px;align-items:center}
+#controls select{padding:5px 10px;background:#fff;border:1px solid #bbb;border-radius:4px;color:#1a1a1a;font-size:12px;font-family:'Inter',sans-serif;outline:none}
+#top-sel{flex:1}
+#clear-btn{padding:5px 10px;background:#f0e8d0;border:1px solid #c9a84c44;border-radius:4px;color:#c9a84c88;cursor:default;font-size:12px;font-family:'Inter',sans-serif;pointer-events:none;transition:color .15s,border-color .15s,background .15s;white-space:nowrap}
+#count{font-size:11px;color:#888;white-space:nowrap;margin-left:2px}
+
+/* State dropdown */
+#state-wrap{position:relative;flex:1}
+#state-search{padding:5px 24px 5px 10px;background:#fff;border:1px solid #bbb;border-radius:4px;color:#1a1a1a;font-size:12px;font-family:'Inter',sans-serif;outline:none;width:100%;cursor:pointer}
+#state-search::placeholder{color:#999}
+#state-arrow{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#999;pointer-events:none;font-size:10px}
+#state-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;min-width:190px;background:#fff;border:1px solid #bbb;border-radius:4px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:9999;max-height:260px;overflow-y:auto}
+#state-dropdown.open{display:block}
+#state-filter-input{width:100%;padding:6px 10px;background:#f5f5f5;border:none;border-bottom:1px solid #ddd;color:#1a1a1a;font-size:12px;font-family:'Inter',sans-serif;outline:none}
+#state-filter-input::placeholder{color:#aaa}
+.state-opt{padding:6px 10px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;color:#1a1a1a;display:flex;align-items:center;gap:7px}
+.state-opt:hover{background:#f0f0e8}
+.state-opt.selected{color:#2a6a2a;background:#f0f5f0}
+.state-check{width:14px;height:14px;flex-shrink:0;border:1.5px solid #bbb;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#2a6a2a;background:#fff}
+.state-opt.selected .state-check{background:#e0f0e0;border-color:#2a6a2a}
+#state-dropdown::-webkit-scrollbar{width:4px}
+#state-dropdown::-webkit-scrollbar-track{background:#f5f5f5}
+#state-dropdown::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+
+/* Price slider */
+#price-wrap{display:flex;align-items:center;gap:7px;flex:1}
+#price-wrap label{font-size:11px;color:#666;white-space:nowrap}
+#price-range{-webkit-appearance:none;appearance:none;flex:1;height:4px;background:#ccc;border-radius:2px;outline:none;cursor:pointer}
+#price-range::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#c9a84c;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+#price-range::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#c9a84c;cursor:pointer;border:2px solid #fff}
+#price-val{font-size:12px;color:#8a6a1a;font-family:'Inter',sans-serif;width:72px;display:inline-block;font-weight:600}
+
+/* COLUMN HEADERS */
+#col-headers{display:flex;align-items:center;padding:5px 12px;border-bottom:1px solid #ddd;background:#ece9e2;flex-shrink:0}
+.ch{font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase}
+.ch-rank{width:46px;flex-shrink:0}.ch-name{flex:1}.ch-price{width:54px;text-align:right;flex-shrink:0;padding-right:4px}.ch-sr{width:68px;text-align:center;flex-shrink:0}
+
+/* LIST */
+#list{flex:1;overflow-y:auto;padding-bottom:48px;background:#fff}
+#list::-webkit-scrollbar{width:5px}
+#list::-webkit-scrollbar-track{background:#f5f5f0}
+#list::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+.row{display:flex;align-items:center;padding:7px 12px;border-bottom:1px solid #d0d0c8;cursor:pointer;transition:background .1s}
+.row:hover{background:#f5f0e8!important}
+.row.top10{background:#fdf8ec}.row.top25{background:#fafaf8}.row.top50{background:#fdf6f2}.row.top100{background:#f5faf5}
+.r-rank{width:46px;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;flex-shrink:0}
+.r-info{flex:1;min-width:0}
+.r-name{font-size:14px;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r-loc{font-size:11px;color:#888;margin-top:1px}
+.r-price{width:54px;text-align:right;padding-right:4px;flex-shrink:0;font-family:'Inter',sans-serif;font-size:12px}
+.r-sr{width:68px;text-align:center;flex-shrink:0}
+.r-sr-num{font-family:'Inter',sans-serif;font-size:13px;font-weight:600}
+.r-sr-of{font-size:10px;color:#aaa}
+
+/* PAGINATION */
+#pagination{position:absolute;bottom:0;left:0;right:0;background:#ece9e2;border-top:1px solid #ddd;padding:7px 12px;display:flex;justify-content:center;align-items:center;gap:10px}
+#pagination button{padding:4px 14px;background:#fff;border:1px solid #bbb;border-radius:4px;color:#2a6a2a;cursor:pointer;font-size:12px;font-family:'Inter',sans-serif}
+#pagination button:disabled{color:#ccc;border-color:#ddd;cursor:default}
+#pagination span{color:#888;font-size:11px}
+
+/* Leaflet tooltip - light */
+.leaflet-tooltip{font-family:'Inter',sans-serif;font-size:12px;background:#fff;border:1px solid #ccc;color:#1a1a1a;box-shadow:0 2px 6px rgba(0,0,0,.15);max-width:280px}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>US Course Rankings</h1>
+</div>
+
+<div id="main">
+  <div id="map-panel">
+    <div id="map"></div>
+
+  </div>
+
+  <div id="right-panel">
+    <!-- CONTROLS: 2 rows above list -->
+    <div id="controls">
+      <div class="ctrl-row" id="legend" style="gap:14px;padding-bottom:2px;border-bottom:1px solid #ddd;margin-bottom:2px">
+        <div class="leg-item"><div class="leg-dot" style="background:#b8860b"></div><span id="leg1">Top 10</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#888"></div><span id="leg2">Top 25</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#8B4513"></div><span id="leg3">Top 50</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#2e7d50"></div><span id="leg4">Top 100</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#2a5a8a"></div><span id="leg5">101+</span></div>
+      </div>
+
+      <div class="ctrl-row">
+        <select id="top-sel" onchange="onTopChange()">
+          <option value="">All Rankings</option>
+          <option value="10">Top 10</option>
+          <option value="25">Top 25</option>
+          <option value="50">Top 50</option>
+          <option value="100">Top 100</option>
+          <option value="150">Top 150</option>
+          <option value="200">Top 200</option>
+          <option value="250">Top 250</option>
+          <option value="300">Top 300</option>
+          <option value="400">Top 400</option>
+          <option value="500">Top 500</option>
+        </select>
+        <div id="state-wrap">
+          <input id="state-search" placeholder="All States ▾" readonly onclick="toggleStateDD()" autocomplete="off">
+          <span id="state-arrow">▾</span>
+          <div id="state-dropdown">
+            <input id="state-filter-input" placeholder="Type to search states..." oninput="filterStateList()" autocomplete="off">
+            <div id="state-opts"></div>
+          </div>
+        </div>
+        <button id="clear-btn" onclick="clearFilters()">✕ Clear</button>
+        <span id="count"></span>
+      </div>
+      <div class="ctrl-row">
+        <div id="price-wrap">
+          <label>Max fee:</label>
+          <input type="range" id="price-range" min="0" max="650" step="25" value="650" oninput="onPriceChange()">
+          <span id="price-val">Any</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="col-headers">
+      <div class="ch ch-rank">Rank</div>
+      <div class="ch ch-name">Course</div>
+      <div class="ch ch-price">Fee</div>
+      <div class="ch ch-sr">State</div>
+    </div>
+    <div id="list"></div>
+    <div id="pagination">
+      <button id="prev-btn" onclick="changePage(-1)" disabled>← Prev</button>
+      <span id="page-info"></span>
+      <button id="next-btn" onclick="changePage(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COURSES = [
+  [1,"Pebble Beach Golf Links","Pebble Beach","CA",36.568,-121.95,1,20,625],
+  [2,"Whistling Straits (Straits)","Sheboygan","WI",43.851,-87.705,1,29,375],
+  [3,"Kiawah Island (Ocean Course)","Kiawah Island","SC",32.608,-80.082,1,20,390],
+  [4,"Pacific Dunes","Bandon","OR",43.188,-124.43,1,19,345],
+  [5,"Pinehurst No. 2","Pinehurst","NC",35.195,-79.469,1,20,175],
+  [6,"TPC Sawgrass (Stadium)","Ponte Vedra Beach","FL",30.196,-81.396,1,41,425],
+  [7,"Bandon Dunes","Bandon","OR",43.188,-124.43,2,19,345],
+  [8,"Erin Hills","Hartford","WI",43.211,-88.369,2,29,245],
+  [9,"Chambers Bay","University Place","WA",47.209,-122.548,1,10,250],
+  [10,"Bethpage (Black)","Farmingdale","NY",40.75,-73.453,1,10,95],
+  [11,"Mammoth Dunes","Nekoosa","WI",44.37,-89.957,3,29,345],
+  [12,"Sand Valley","Nekoosa","WI",44.37,-89.957,4,29,345],
+  [13,"Shadow Creek","North Las Vegas","NV",36.292,-115.124,1,10,500],
+  [14,"Arcadia Bluffs (Bluffs)","Arcadia","MI",44.491,-86.234,1,26,250],
+  [15,"Harbour Town Golf Links","Hilton Head Island","SC",32.138,-80.802,2,20,380],
+  [16,"Old Macdonald","Bandon","OR",43.188,-124.43,3,19,345],
+  [17,"Bandon Trails","Bandon","OR",43.188,-124.43,4,19,345],
+  [18,"Sheep Ranch","Bandon","OR",43.188,-124.43,5,19,295],
+  [19,"The Lido at Sand Valley","Nekoosa","WI",44.37,-89.957,5,29,345],
+  [20,"Blackwolf Run (River)","Kohler","WI",43.724,-87.789,6,29,290],
+  [21,"Spyglass Hill","Pebble Beach","CA",36.584,-121.963,2,20,595],
+  [22,"Torrey Pines (South)","La Jolla","CA",32.897,-117.253,3,20,240],
+  [23,"Forest Dunes - The Loop (Red)","Roscommon","MI",44.557,-84.59,2,26,325],
+  [24,"Kapalua (Plantation)","Lahaina","HI",20.998,-156.671,1,10,350],
+  [25,"Sweetens Cove","South Pittsburg","TN",35.018,-85.718,1,10,125],
+  [26,"Streamsong (Red)","Bowling Green","FL",27.64,-81.844,2,41,295],
+  [27,"Forest Dunes - The Loop (Black)","Roscommon","MI",44.557,-84.59,3,26,325],
+  [28,"Streamsong (Blue)","Bowling Green","FL",27.64,-81.844,3,41,295],
+  [29,"Gamble Sands","Brewster","WA",48.094,-119.775,2,10,295],
+  [30,"American Dunes","Grand Haven","MI",43.058,-86.233,4,26,195],
+  [31,"Caledonia Golf & Fish Club","Pawleys Island","SC",33.428,-79.12,3,20,345],
+  [32,"Sedge Valley","Nekoosa","WI",44.37,-89.957,7,29,375],
+  [33,"Mauna Kea","Waimea","HI",20.003,-155.826,2,10,400],
+  [34,"Four Seasons Lanai (Manele)","Lanai City","HI",20.742,-156.88,3,10,290],
+  [35,"Whistling Straits (Irish)","Sheboygan","WI",43.851,-87.705,8,29,180],
+  [36,"Greywalls at Marquette","Marquette","MI",46.543,-87.395,5,26,225],
+  [37,"Pasatiempo","Santa Cruz","CA",36.993,-122.042,4,20,285],
+  [38,"Prairie Club (Dunes)","Valentine","NE",42.887,-100.551,1,10,295],
+  [39,"Silvies Valley Ranch (Reversible)","Seneca","OR",43.998,-118.975,6,19,295],
+  [40,"Primland","Meadows of Dan","VA",36.673,-80.414,1,10,295],
+  [41,"Ozarks National at Big Cedar Lodge","Hollister","MO",36.582,-93.214,1,10,85],
+  [42,"Tobacco Road","Sanford","NC",35.396,-79.197,2,20,375],
+  [43,"Cascata","Boulder City","NV",35.975,-114.932,2,10,595],
+  [44,"The Links at Spanish Bay","Pebble Beach","CA",36.611,-121.981,5,20,290],
+  [45,"Blackwolf Run (Meadow Valleys)","Kohler","WI",43.724,-87.789,9,29,245],
+  [46,"Payne\'s Valley","Hollister","MO",36.582,-93.214,2,10,225],
+  [47,"Wolf Creek Golf Club","Mesquite","NV",36.815,-114.031,3,10,295],
+  [48,"Streamsong (Black)","Bowling Green","FL",27.64,-81.844,4,41,295],
+  [49,"The Greenbrier (Old White)","White Sulphur Springs","WV",37.786,-80.299,1,10,175],
+  [50,"Pinehurst No. 4","Pinehurst","NC",35.195,-79.469,3,20,150],
+  [51,"Cog Hill Golf & CC (#4 Dubsdread)","Lemont","IL",41.698,-88.005,1,54,185],
+  [52,"Stoatin Brae","Augusta","MI",42.34,-85.346,6,26,395],
+  [53,"Sea Island (Seaside)","Sea Island","GA",31.2,-81.393,1,18,295],
+  [54,"Broadmoor (East)","Colorado Springs","CO",38.793,-104.871,1,18,285],
+  [55,"Troon North (Monument)","Scottsdale","AZ",33.759,-111.857,1,20,245],
+  [56,"We-Ko-Pa (Saguaro)","Fort McDowell","AZ",33.643,-111.686,2,20,195],
+  [57,"True Blue Golf Club","Pawleys Island","SC",33.432,-79.114,4,20,175],
+  [58,"Mid Pines","Pinehurst","NC",35.2,-79.462,4,20,175],
+  [59,"Pine Needles","Pinehurst","NC",35.196,-79.445,5,20,220],
+  [60,"Arcadia Bluffs (South)","Arcadia","MI",44.491,-86.234,7,26,240],
+  [61,"TPC Scottsdale (Stadium)","Scottsdale","AZ",33.659,-111.899,3,20,285],
+  [62,"Cabot Citrus Farms (Karoo)","Brooksville","FL",28.558,-82.388,5,41,295],
+  [63,"PGA West (Stadium)","La Quinta","CA",33.663,-116.303,6,20,195],
+  [64,"Wine Valley","Walla Walla","WA",46.079,-118.306,3,10,175],
+  [65,"Pinehurst No. 8","Pinehurst","NC",35.195,-79.469,6,20,285],
+  [66,"The McLemore Club (Highlands)","Rising Fawn","GA",34.761,-85.517,2,18,195],
+  [67,"Firestone (South)","Akron","OH",41.019,-81.434,1,10,325],
+  [68,"Bay Harbor","Bay Harbor","MI",45.332,-85.003,8,26,185],
+  [69,"Mossy Oak","West Point","MS",33.607,-88.648,1,10,380],
+  [70,"Mauna Lani (South)","Kohala Coast","HI",19.93,-155.899,4,10,225],
+  [71,"TPC Harding Park","San Francisco","CA",37.726,-122.481,7,20,395],
+  [72,"Pelican Hill (Ocean North)","Newport Coast","CA",33.587,-117.857,8,20,395],
+  [73,"Pelican Hill (Ocean South)","Newport Coast","CA",33.587,-117.857,9,20,250],
+  [74,"Landmand","Homer","NE",42.324,-96.493,2,10,295],
+  [75,"Black Desert Resort","Ivins","UT",37.168,-113.682,1,10,195],
+  [76,"Fallen Oak Golf Course","Biloxi","MS",30.41,-89.034,2,10,295],
+  [77,"Quintero Golf Club","Peoria","AZ",33.976,-112.417,4,20,215],
+  [78,"We-Ko-Pa (Cholla)","Fort McDowell","AZ",33.643,-111.686,5,20,285],
+  [79,"Troon North (Pinnacle)","Scottsdale","AZ",33.759,-111.857,6,20,260],
+  [80,"Dunmaglas Golf Club","Charlevoix","MI",45.318,-85.258,9,26,195],
+  [81,"Grayhawk (Raptor)","Scottsdale","AZ",33.704,-111.895,7,20,195],
+  [82,"Sand Hollow (Championship)","Hurricane","UT",37.176,-113.298,2,10,295],
+  [83,"Karsten Creek","Stillwater","OK",36.134,-97.056,1,10,325],
+  [84,"Edgewood Tahoe Golf Course","Stateline","NV",38.967,-119.951,4,10,285],
+  [85,"Golf Club at Dove Mountain","Marana","AZ",32.406,-111.151,8,20,275],
+  [86,"Omni Homestead (Cascades)","Hot Springs","VA",37.989,-79.832,2,10,225],
+  [87,"Bandon Preserve","Bandon","OR",43.188,-124.43,7,19,295],
+  [88,"Forest Dunes - Weiskopf","Roscommon","MI",44.557,-84.59,10,26,295],
+  [89,"Coeur d\'Alene Resort Golf Course","Coeur d'Alene","ID",47.671,-116.78,1,10,375],
+  [90,"Jackson Hole Golf & Tennis Club","Jackson","WY",43.488,-110.762,1,9,295],
+  [91,"PGA Frisco (Fields Ranch East)","Frisco","TX",33.158,-96.823,1,20,295],
+  [92,"PGA Frisco (Fields Ranch West)","Frisco","TX",33.158,-96.823,2,20,175],
+  [93,"Pinehurst No. 10","Pinehurst","NC",35.195,-79.469,7,20,125],
+  [94,"Bully Pulpit Golf Course","Medora","ND",46.914,-103.523,1,10,295],
+  [95,"Kingsmill Resort (River)","Williamsburg","VA",37.24,-76.73,3,10,155],
+  [96,"Southern Pines","Southern Pines","NC",35.172,-79.393,8,20,225],
+  [97,"SentryWorld","Stevens Point","WI",44.521,-89.574,10,29,295],
+  [98,"Barton Creek (Fazio Foothills)","Austin","TX",30.337,-97.881,3,20,385],
+  [99,"CordeValle","San Martin","CA",37.077,-121.58,10,20,195],
+  [100,"Paiute Golf Resort (Wolf)","Las Vegas","NV",36.31,-115.354,5,10,350],
+  [101,"Nemacolin (Mystic Rock)","Farmington","PA",39.781,-79.52,1,10,225],
+  [102,"The Glen Club","Glenview","IL",42.079,-87.832,2,54,295],
+  [103,"Crosswater Club","Sunriver","OR",43.878,-121.452,8,19,105],
+  [104,"Lawsonia (Links)","Green Lake","WI",43.839,-88.985,11,29,195],
+  [105,"Ak-Chin Southern Dunes","Maricopa","AZ",33.062,-112.006,9,20,265],
+  [106,"Wickenburg Ranch (Big Wick)","Wickenburg","AZ",33.973,-112.729,10,20,185],
+  [107,"TPC Deere Run","Silvis","IL",41.521,-90.384,3,54,350],
+  [108,"Teton Pines Resort","Jackson","WY",43.488,-110.762,2,9,265],
+  [109,"Salish Cliffs Golf Club","Shelton","WA",47.213,-123.02,4,10,295],
+  [110,"Moonlight Basin","Big Sky","MT",45.286,-111.444,1,10,175],
+  [111,"Pinehurst No. 7","Pinehurst","NC",35.195,-79.469,9,20,295],
+  [112,"Golden Horseshoe (Gold)","Williamsburg","VA",37.272,-76.711,4,10,295],
+  [113,"Princeville Makai Golf Club","Princeville","HI",22.218,-159.467,5,10,285],
+  [114,"TPC San Antonio (Oaks)","San Antonio","TX",29.685,-98.643,4,20,575],
+  [115,"Poppy Hills","Pebble Beach","CA",36.594,-121.967,11,20,285],
+  [116,"Barton Creek (Canyons)","Austin","TX",30.337,-97.881,5,20,145],
+  [117,"Newcastle Golf Club (Coal Creek)","Newcastle","WA",47.532,-122.165,5,10,165],
+  [118,"Belvedere","Charlevoix","MI",45.318,-85.258,11,26,265],
+  [119,"Omni Grove Park Inn Golf Course","Asheville","NC",35.606,-82.567,10,20,349],
+  [120,"The Boulders (South)","Carefree","AZ",33.834,-111.896,11,20,195],
+  [121,"Arrowhead Golf Club","Littleton","CO",39.549,-105.148,2,18,99],
+  [122,"Giants Ridge (Quarry)","Biwabik","MN",47.539,-92.334,1,10,195],
+  [123,"Torrey Pines (North)","La Jolla","CA",32.897,-117.253,12,20,99],
+  [124,"Giants Ridge (Legend)","Biwabik","MN",47.539,-92.334,2,10,175],
+  [125,"Pinehurst No. 6","Pinehurst","NC",35.195,-79.469,11,20,395],
+  [126,"Sea Island (Plantation)","Sea Island","GA",31.2,-81.393,3,18,245],
+  [127,"Pronghorn (Fazio)","Bend","OR",44.102,-121.338,9,19,350],
+  [128,"Wailea Golf Club (Gold)","Wailea","HI",20.681,-156.437,6,10,280],
+  [129,"Trump National Doral (Blue Monster)","Miami","FL",25.819,-80.343,6,41,195],
+  [130,"Rams Hill","Borrego Springs","CA",33.26,-116.4,13,20,145],
+  [131,"Tidewater Golf Club","North Myrtle Beach","SC",33.846,-78.616,5,20,135],
+  [132,"The Wilderness at Fortune Bay","Tower","MN",47.804,-92.281,3,10,175],
+  [133,"Pinehurst No. 9","Pinehurst","NC",35.195,-79.469,12,20,295],
+  [134,"High Hampton Resort","Cashiers","NC",35.097,-83.097,13,20,295],
+  [135,"Ventana Canyon (Mountain)","Tucson","AZ",32.365,-110.824,12,20,295],
+  [136,"Suncadia Resort (Prospector)","Cle Elum","WA",47.208,-121.016,6,10,295],
+  [137,"Poipu Bay Golf Course","Koloa","HI",21.888,-159.478,7,10,225],
+  [138,"Ko Olina Golf Club","Kapolei","HI",21.334,-158.128,8,10,295],
+  [139,"Innisbrook Resort (Copperhead)","Palm Harbor","FL",28.083,-82.732,7,41,285],
+  [140,"PGA National (Champion)","Palm Beach Gardens","FL",26.84,-80.119,8,41,195],
+  [141,"Fossil Trace Golf Club","Golden","CO",39.752,-105.225,3,18,245],
+  [142,"Old Corkscrew","Estero","FL",26.435,-81.649,9,41,225],
+  [143,"Pronghorn (Nicklaus)","Bend","OR",44.102,-121.338,10,19,165],
+  [144,"Black Mesa","Espanola","NM",35.988,-106.081,1,10,195],
+  [145,"Black Lake","Onaway","MI",45.358,-84.217,12,26,295],
+  [146,"Turtle Bay (Palmer)","Kahuku","HI",21.698,-157.992,9,10,350],
+  [147,"Ocean Course at Hokuala","Lihue","HI",21.968,-159.36,10,10,235],
+  [148,"Tetherow Golf Club","Bend","OR",44.019,-121.36,11,19,125],
+  [149,"Wild Horse Golf Club","Gothenburg","NE",40.927,-100.162,3,10,285],
+  [150,"TPC Louisiana","Avondale","LA",29.921,-90.193,1,10,195],
+  [151,"Golf Club of Houston","Humble","TX",29.957,-95.224,6,20,350],
+  [152,"Nemacolin (Shepherd\'s Rock)","Farmington","PA",39.781,-79.52,2,10,295],
+  [153,"Camp Creek","Panama City Beach","FL",30.24,-85.877,10,41,145],
+  [154,"The Jewel Golf Club","Lake City","MN",44.441,-92.267,4,10,195],
+  [155,"World Woods (Pine Barrens)","Brooksville","FL",27.64,-81.844,11,41,165],
+  [156,"Paako Ridge","Sandia Park","NM",35.164,-106.344,2,10,165],
+  [157,"Paa-Ko Ridge Golf Club","Sandia Park","NM",35.164,-106.344,3,10,185],
+  [158,"Sequoyah National Golf Club","Whittier","NC",35.44,-83.329,14,20,125],
+  [159,"Stonewall Orchard Golf Club","Grayslake","IL",42.341,-88.041,4,54,245],
+  [160,"Longaberger Golf Club","Nashport","OH",40.029,-82.083,2,10,105],
+  [161,"Lawsonia (Woodlands)","Green Lake","WI",43.839,-88.985,12,29,285],
+  [162,"Reynolds Great Waters","Eatonton","GA",33.331,-83.39,4,18,135],
+  [163,"Crumpin-Fox Club","Bernardston","MA",42.664,-72.537,1,10,285],
+  [164,"The Bluffs on Thompson Creek","St. Francisville","LA",30.774,-91.376,2,10,295],
+  [165,"Reflection Bay Golf Club","Henderson","NV",36.041,-114.881,6,10,285],
+  [166,"French Lick (Dye Course)","French Lick","IN",38.552,-86.625,1,16,95],
+  [167,"University Ridge","Verona","WI",42.992,-89.561,13,29,195],
+  [168,"The Classic at Madden\'s","Brainerd","MN",46.391,-94.153,5,10,125],
+  [169,"Taconic Golf Club","Williamstown","MA",42.718,-73.231,2,10,175],
+  [170,"Olde Stonewall Golf Club","Ellwood City","PA",40.869,-80.28,3,10,295],
+  [171,"Omni Bedford Springs Resort","Bedford","PA",40.02,-78.507,4,10,125],
+  [172,"Dacotah Ridge Golf Club","Morton","MN",44.553,-94.985,6,10,75],
+  [173,"Tot Hill Farm","Asheboro","NC",35.729,-79.819,15,20,235],
+  [174,"Grizzly Ranch","Portola","CA",39.812,-120.473,14,20,195],
+  [175,"French Lick (Ross Course)","French Lick","IN",38.552,-86.625,2,16,195],
+  [176,"Ponte Vedra Inn & Club (Lagoon)","Ponte Vedra Beach","FL",30.238,-81.387,12,41,250],
+  [177,"SunRidge Canyon","Fountain Hills","AZ",33.616,-111.729,13,20,235],
+  [178,"Stonewall Resort","Roanoke","WV",38.91,-80.402,2,10,285],
+  [179,"Bethpage (Red)","Farmingdale","NY",40.75,-73.453,2,10,85],
+  [180,"PGA West (Mountain)","La Quinta","CA",33.663,-116.303,15,20,245],
+  [181,"Towa Golf Club","Santa Fe","NM",35.693,-105.973,4,10,185],
+  [182,"Spirit Hollow Golf Course","Burlington","IA",40.808,-91.115,1,14,95],
+  [183,"Turning Stone (Atunyote)","Verona","NY",43.113,-75.615,3,10,275],
+  [184,"Cog Hill Golf & CC (#2 Ravines)","Lemont","IL",41.698,-88.005,5,54,65],
+  [185,"Reynolds National (Oconee)","Greensboro","GA",33.397,-83.207,5,18,285],
+  [186,"Prairie Club (Pines)","Valentine","NE",42.887,-100.551,4,10,255],
+  [187,"The Club at Lac La Belle","Oconomowoc","WI",43.128,-88.49,14,29,185],
+  [188,"Wintonbury Hills Golf Course","Bloomfield","CT",41.867,-72.72,1,10,75],
+  [189,"OMNI La Costa (North)","Carlsbad","CA",33.103,-117.261,16,20,295],
+  [190,"Saratoga National Golf Club","Saratoga Springs","NY",43.091,-73.807,4,10,145],
+  [191,"Montauk Downs State Park","Montauk","NY",41.025,-71.961,5,10,65],
+  [192,"Brasstown Valley Resort","Young Harris","GA",34.938,-83.857,6,18,285],
+  [193,"Pinehills Golf Club (Jones)","Plymouth","MA",41.912,-70.694,3,10,145],
+  [194,"Carmel Valley Ranch","Carmel","CA",36.511,-121.893,17,20,295],
+  [195,"Hawk\'s View","Lake Geneva","WI",42.583,-88.434,15,29,185],
+  [196,"TPC Sawgrass (Dye\'s Valley)","Ponte Vedra Beach","FL",30.196,-81.396,13,41,395],
+  [197,"Paiute Golf Resort (Sun Mountain)","Las Vegas","NV",36.31,-115.354,7,10,165],
+  [198,"The Bull at Pinehurst Farms","Sheboygan Falls","WI",43.729,-87.887,16,29,230],
+  [199,"Geneva National (Player)","Lake Geneva","WI",42.596,-88.508,17,29,155],
+  [200,"Wintergreen Resort (Devils Knob)","Wintergreen","VA",37.964,-79.088,5,10,285],
+  [201,"Troy Burne","Hudson","WI",44.973,-92.747,18,29,175],
+  [202,"Top of the Rock","Hollister","MO",36.582,-93.214,3,10,295],
+  [203,"Mistwood Golf Club","Romeoville","IL",41.648,-88.083,6,54,115],
+  [204,"Bulle Rock Golf Course","Havre de Grace","MD",39.551,-76.085,1,10,110],
+  [205,"George Wright","Boston","MA",42.248,-71.108,4,10,75],
+  [206,"Abbey Springs Golf Course","Fontana","WI",42.545,-88.561,19,29,55],
+  [207,"Omni Amelia Island (Long Point)","Amelia Island","FL",30.537,-81.445,14,41,195],
+  [208,"Ballyowen Golf Club","Hamburg","NJ",41.153,-74.582,1,10,135],
+  [209,"Inn of the Mountain Gods","Mescalero","NM",33.163,-105.798,5,10,185],
+  [210,"Purgatory Golf Club","Noblesville","IN",40.06,-86.068,3,16,165],
+  [211,"Kiawah Island (Oak Point)","Kiawah Island","SC",32.612,-80.1,6,20,285],
+  [212,"Brasada Canyons","Powell Butte","OR",44.023,-120.887,12,19,175],
+  [213,"Belgrade Lakes Golf Club","Belgrade Lakes","ME",44.525,-69.87,1,10,95],
+  [214,"Harbor Shores","Benton Harbor","MI",42.115,-86.454,13,26,195],
+  [215,"Wilderness Club","Eureka","MT",48.879,-115.05,2,10,null],
+  [216,"Pinehills Golf Club (Nicklaus)","Plymouth","MA",41.912,-70.694,5,10,145],
+  [217,"The Bog","Saukville","WI",43.386,-87.943,20,29,185],
+  [218,"Trump National Los Angeles","Rancho Palos Verdes","CA",33.742,-118.394,18,20,395],
+  [219,"Hammock Beach (Ocean)","Palm Coast","FL",29.538,-81.208,15,41,165],
+  [220,"Coldwater Golf Links","Ames","IA",42.025,-93.62,2,14,55],
+  [221,"Wild Dunes (Links)","Isle of Palms","SC",32.793,-79.751,7,20,145],
+  [222,"Tiburon (Gold)","Naples","FL",26.225,-81.745,16,41,295],
+  [223,"Lake of Isles (North)","North Stonington","CT",41.45,-71.873,2,10,95],
+  [224,"Ventana Canyon (Canyon)","Tucson","AZ",32.365,-110.824,14,20,235],
+  [225,"Stoney Creek (Shenandoah)","Wintergreen","VA",37.964,-79.088,6,10,285],
+  [226,"Gaylord Golf Club","Gaylord","MI",45.028,-84.675,14,26,175],
+  [227,"Wildfire (Palmer)","Phoenix","AZ",33.679,-111.979,15,20,245],
+  [228,"Great River Golf Club","Milford","CT",41.198,-73.021,3,10,95],
+  [229,"Baywood Greens","Long Neck","DE",38.642,-75.199,1,9,75],
+  [230,"Ross Bridge Golf Resort","Hoover","AL",33.404,-86.874,1,10,195],
+  [231,"Quarry Oaks Golf Club","Ashland","NE",41.034,-96.368,5,10,145],
+  [232,"Trump Golf Links at Ferry Point","Bronx","NY",40.81,-73.845,6,10,195],
+  [233,"The Quarry Golf Club","San Antonio","TX",29.537,-98.527,7,20,275],
+  [234,"Colbert Hills Golf Course","Manhattan","KS",39.203,-96.583,1,10,125],
+  [235,"Manitou Passage","Cedar","MI",44.87,-85.82,15,26,185],
+  [236,"The Preserve at Oak Meadows","Addison","IL",41.946,-88.004,7,54,95],
+  [237,"Myrtle Beach National (King\'s North)","Myrtle Beach","SC",33.784,-78.934,8,20,145],
+  [238,"Chateau Elan (Chateau)","Braselton","GA",34.108,-83.824,7,18,165],
+  [239,"TPC Las Vegas","Las Vegas","NV",36.068,-115.322,8,10,145],
+  [240,"Coyote Springs Golf Club","Coyote Springs","NV",36.693,-114.857,9,10,155],
+  [241,"Wigwam (Gold)","Litchfield Park","AZ",33.502,-112.357,16,20,245],
+  [242,"Talking Stick (O\'odham)","Scottsdale","AZ",33.578,-111.905,17,20,165],
+  [243,"The Ledges Golf Club","St. George","UT",37.15,-113.661,3,10,175],
+  [244,"Sugarloaf Golf Club","Carrabassett","ME",45.032,-70.314,2,10,145],
+  [245,"Firekeeper Golf Course","Mayetta","KS",39.333,-95.722,2,10,145],
+  [246,"Raven Golf Club Phoenix","Phoenix","AZ",33.312,-112.049,18,20,245],
+  [247,"FarmLinks Golf Club","Sylacauga","AL",33.173,-86.251,2,10,195],
+  [248,"Twisted Dune Golf Club","Egg Harbor Township","NJ",39.381,-74.625,2,10,135],
+  [249,"Old Kinderhook Golf Course","Camdenton","MO",38.008,-92.742,4,10,115],
+  [250,"Rio Secco Golf Club","Henderson","NV",35.953,-115.006,10,10,195],
+  [251,"RTJ Grand National (Links)","Opelika","AL",32.694,-85.367,3,10,145],
+  [252,"Soldier Hollow (Gold)","Midway","UT",40.511,-111.473,4,10,175],
+  [253,"Lookout Mountain","Phoenix","AZ",33.654,-112.053,19,20,225],
+  [254,"Barefoot Resort (Dye)","North Myrtle Beach","SC",33.8,-78.738,9,20,145],
+  [255,"Verrado (Founders)","Buckeye","AZ",33.474,-112.584,20,20,195],
+  [256,"Sagamore Golf Club","Bolton Landing","NY",43.573,-73.617,7,10,275],
+  [257,"Kebo Valley Golf Club","Bar Harbor","ME",44.387,-68.201,3,10,null],
+  [258,"Woodstock Inn & Resort","Woodstock","VT",43.624,-72.516,1,10,295],
+  [259,"Sunday River Golf Club","Newry","ME",44.476,-70.858,4,10,95],
+  [260,"Green Mountain National","Killington","VT",43.672,-72.778,2,10,115],
+  [261,"Fyre Lake Golf Club","Sherrard","IL",41.506,-90.461,8,54,95],
+  [262,"The Links at Stono Ferry","Hollywood","SC",32.747,-80.178,10,20,135],
+  [263,"Kinderlou Forest Golf Club","Valdosta","GA",30.877,-83.344,8,18,95],
+  [264,"Barefoot Resort (Love)","North Myrtle Beach","SC",33.8,-78.738,11,20,135],
+  [265,"StoneWater Golf Club","Highland Heights","OH",41.554,-81.463,3,10,95],
+  [266,"Copper Rock Golf Course","Hurricane","UT",37.176,-113.298,5,10,145],
+  [267,"RTJ Capitol Hill (Judge)","Prattville","AL",32.441,-86.508,4,10,null],
+  [268,"Rum Pointe Seaside Golf Links","Berlin","MD",38.326,-75.219,2,10,95],
+  [269,"Gearhart Golf Links","Gearhart","OR",46.018,-123.917,13,19,85],
+  [270,"Hawktree Golf Club","Bismarck","ND",46.82,-100.779,2,10,75],
+  [271,"Jug Mountain Ranch","McCall","ID",44.9,-116.099,2,10,175],
+  [272,"Southern Dunes Golf & Country Club","Haines City","FL",28.102,-81.617,17,41,95],
+  [273,"Keystone Ranch Golf Course","Keystone","CO",39.599,-105.97,4,18,225],
+  [274,"Eagle Ridge Resort - The General","Galena","IL",42.432,-90.378,9,54,135],
+  [275,"The Ridge at Castle Pines North","Castle Rock","CO",39.392,-104.878,5,18,175],
+  [276,"TPC River Highlights","Cromwell","CT",41.589,-72.65,4,10,175],
+  [277,"Stowe Country Club","Stowe","VT",44.465,-72.687,3,10,265],
+  [278,"Bethpage (Blue)","Farmingdale","NY",40.75,-73.453,8,10,65],
+  [279,"Highlands of Elgin","Elgin","IL",42.047,-88.325,10,54,175],
+  [280,"Bethpage (Green)","Farmingdale","NY",40.75,-73.453,9,10,65],
+  [281,"Coral Canyon Golf Course","Washington","UT",37.129,-113.512,6,10,145],
+  [282,"Horseshoe Bay (Ram Rock)","Horseshoe Bay","TX",30.539,-98.372,8,20,145],
+  [283,"Carter Plantation","Springfield","LA",30.452,-90.513,3,10,265],
+  [284,"Thanksgiving Point","Lehi","UT",40.389,-111.876,7,10,145],
+  [285,"Stratton Mountain Golf Club","Stratton Mountain","VT",43.113,-72.909,4,10,295],
+  [286,"ThunderHawk Golf Course","Beach Park","IL",42.436,-87.872,11,54,115],
+  [287,"Hilton Head National","Bluffton","SC",32.241,-80.862,12,20,145],
+  [288,"The Park at West Palm Beach","West Palm Beach","FL",26.715,-80.118,18,41,265],
+  [289,"Canaan Valley Resort","Davis","WV",39.065,-79.423,3,10,185],
+  [290,"Glade Springs (Cobb)","Daniels","WV",37.671,-81.141,4,10,135],
+  [291,"Wild Dunes (Harbor)","Isle of Palms","SC",32.793,-79.751,13,20,95],
+  [292,"The Home Course","DuPont","WA",47.099,-122.628,7,10,95],
+  [293,"The Frog Golf Club","Villa Rica","GA",33.736,-84.925,9,18,125],
+  [294,"Grand Bear Golf Course","Saucier","MS",30.622,-89.126,3,10,115],
+  [295,"Pawleys Plantation","Pawleys Island","SC",33.435,-79.108,14,20,195],
+  [296,"Samoset Golf Course","Rockport","ME",44.117,-69.082,5,10,175],
+  [297,"Canyons Golf Course","Park City","UT",40.651,-111.499,8,10,85],
+  [298,"Metamora Fields Golf Club","Metamora","IL",40.793,-89.361,12,54,125],
+  [299,"Quicksilver Golf Club","Midway","PA",40.365,-80.421,5,10,155],
+  [300,"Cantigny Golf (Woodside/Lakeside)","Wheaton","IL",41.865,-88.163,13,54,145],
+  [301,"Cape Arundel","Kennebunkport","ME",43.361,-70.476,6,10,145],
+  [302,"Granite Links Golf Club","Quincy","MA",42.225,-71.003,6,10,85],
+  [303,"Dancing Rabbit Golf Club (Oaks)","Philadelphia","MS",32.775,-89.106,4,10,95],
+  [304,"Awarii Dunes Golf Club","Axtell","NE",40.491,-99.127,6,10,175],
+  [305,"Branson Hills Golf Club","Branson","MO",36.643,-93.218,5,10,265],
+  [306,"TPC Colorado","Berthoud","CO",40.324,-105.085,6,18,175],
+  [307,"Hammock Beach (Conservatory)","Palm Coast","FL",29.538,-81.208,19,41,135],
+  [308,"Old Works Golf Course","Anaconda","MT",46.128,-112.944,3,10,95],
+  [309,"Pine Meadow Golf Club","Mundelein","IL",42.256,-88.003,14,54,295],
+  [310,"Tournament Club of Iowa","Polk City","IA",41.773,-93.711,3,14,115],
+  [311,"The Journey at Pechanga","Temecula","CA",33.491,-117.145,19,20,165],
+  [312,"Barefoot Resort (Norman)","North Myrtle Beach","SC",33.8,-78.738,15,20,95],
+  [313,"Sea Pines (Atlantic Dunes)","Hilton Head Island","SC",32.134,-80.812,16,20,85],
+  [314,"Gold Mountain (Olympic)","Bremerton","WA",47.526,-122.761,8,10,85],
+  [315,"The King and The Prince Golf Course","St Simons Island","GA",31.157,-81.389,10,18,125],
+  [316,"Palouse Ridge Golf Club","Pullman","WA",46.727,-117.171,9,10,175],
+  [317,"CommonGround Golf Course","Aurora","CO",39.66,-104.817,7,18,125],
+  [318,"Reunion Resort (Watson)","Kissimmee","FL",28.294,-81.601,20,41,null],
+  [319,"Dancing Rabbit Golf Club (Azaleas)","Philadelphia","MS",32.775,-89.106,5,10,165],
+  [320,"Nettle Creek Country Club","Morris","IL",41.368,-88.421,15,54,85],
+  [321,"RTJ Capitol Hill (Senator)","Prattville","AL",32.441,-86.508,5,10,295],
+  [322,"Shell Landing Golf Club","Gautier","MS",30.397,-88.673,6,10,null],
+  [323,"Warren Course (Notre Dame)","Notre Dame","IN",41.706,-86.239,4,16,125],
+  [324,"The Greenbrier (Meadows)","White Sulphur Springs","WV",37.786,-80.299,5,10,115],
+  [325,"Ravisloe Country Club","Homewood","IL",41.556,-87.666,16,54,85],
+  [326,"El Campeon at Mission Inn","Howey-in-the-Hills","FL",28.717,-81.764,21,41,125],
+  [327,"Jimmie Austin OU Golf Club","Norman","OK",35.197,-97.424,2,10,null],
+  [328,"Salishan Golf Links","Gleneden Beach","OR",44.867,-124.038,14,19,245],
+  [329,"Aldeen Golf Club","Rockford","IL",42.292,-89.031,17,54,135],
+  [330,"RTJ Cambrian Ridge (Sherling/Canyon)","Greenville","AL",31.829,-86.622,6,10,175],
+  [331,"Omni Interlocken (Vista/Eldorado)","Broomfield","CO",39.93,-105.099,8,18,95],
+  [332,"The Ledges Golf Club","York","ME",43.173,-70.671,7,10,null],
+  [333,"Whitefish Lake Golf Club","Whitefish","MT",48.411,-114.351,4,10,125],
+  [334,"Stonewolf Golf Club","Fairview Heights","IL",38.59,-90.019,18,54,95],
+  [335,"Newport National Golf Club","Middletown","RI",41.518,-71.299,1,10,125],
+  [336,"Forest Ridge Golf Club","Broken Arrow","OK",36.036,-95.868,3,10,115],
+  [337,"Pilgrim Run Golf Club","Brethren","MI",44.302,-85.833,16,26,95],
+  [338,"Brickyard Crossing","Indianapolis","IN",39.791,-86.235,5,16,115],
+  [339,"Totteridge Golf Club","Greensburg","PA",40.299,-79.538,6,10,null],
+  [340,"Makray Memorial Golf Club","Barrington","IL",42.132,-88.124,19,54,95],
+  [341,"Rock Hollow Golf Club","Peru","IN",40.756,-86.069,6,16,95],
+  [342,"Queenstown Harbor Golf Links","Queenstown","MD",38.978,-76.153,3,10,75],
+  [343,"The Lodge of Four Seasons","Lake Ozark","MO",38.208,-92.637,6,10,215],
+  [344,"Farmstead Golf & Country Club","Lafayette","NJ",41.088,-74.666,3,10,85],
+  [345,"Arrowhead Pointe Golf Course","Elberton","GA",33.999,-82.866,11,18,115],
+  [346,"Wasatch Mountain (Lake)","Midway","UT",40.511,-111.473,9,10,185],
+  [347,"Annbriar Golf Course","Waterloo","IL",38.337,-90.149,20,54,185],
+  [348,"Vail Golf Club","Vail","CO",39.638,-106.374,9,18,75],
+  [349,"The Heather at Boyne Highlands","Harbor Springs","MI",45.387,-84.919,17,26,75],
+  [350,"Bailey Ranch Golf Club","Owasso","OK",36.279,-95.851,4,10,75],
+  [351,"Hermitage Golf Course (Presidents Reserve)","Old Hickory","TN",36.255,-86.651,2,10,125],
+  [352,"Prairie View Golf Club","Carmel","IN",39.964,-86.118,7,16,85],
+  [353,"WeaverRidge Golf Club","Peoria","IL",40.742,-89.625,21,54,265],
+  [354,"Snowshoe Mountain Golf Course","Snowshoe","WV",38.382,-80.01,6,10,185],
+  [355,"Maryland National Golf Club","Middletown","MD",39.448,-77.557,4,10,75],
+  [356,"Penn National (Founders)","Fayetteville","PA",39.914,-77.58,7,10,165],
+  [357,"EagleSticks Golf Club","Zanesville","OH",39.929,-82.017,4,10,85],
+  [358,"Avalon Lakes Golf Course","Warren","OH",41.25,-80.834,5,10,null],
+  [359,"Pfau Course at Indiana University","Bloomington","IN",39.178,-86.498,8,16,85],
+  [360,"Hermitage Golf Course (General\'s Retreat)","Old Hickory","TN",36.255,-86.651,3,10,null],
+  [361,"Harborside International (Port)","Chicago","IL",41.735,-87.556,22,54,165],
+  [362,"Cherokee Hills Golf Club","Catoosa","OK",36.185,-95.757,5,10,85],
+  [363,"Rollingstone Ranch Golf Club","Steamboat Springs","CO",40.485,-106.832,10,18,null],
+  [364,"The Course at Sewanee","Sewanee","TN",35.201,-85.92,4,10,95],
+  [365,"RTJ Oxmoor Valley (Ridge)","Birmingham","AL",33.509,-86.92,7,10,75],
+  [366,"Blue Top Ridge","Riverside","IA",41.48,-91.581,4,14,195],
+  [367,"Lyman Orchards (Jones)","Middlefield","CT",41.527,-72.73,5,10,85],
+  [368,"RTJ Grand National (Lake)","Opelika","AL",32.694,-85.367,8,10,125],
+  [369,"Stone Mountain Golf Club","Stone Mountain","GA",33.808,-84.146,12,18,75],
+  [370,"Neshanic Valley Golf Course","Neshanic Station","NJ",40.523,-74.742,4,10,115],
+  [371,"Prairie Landing Golf Club","West Chicago","IL",41.869,-88.243,23,54,265],
+  [372,"The Medalist","Marshall","MI",42.274,-84.964,18,26,125],
+  [373,"Harborside International (Starboard)","Chicago","IL",41.735,-87.556,24,54,95],
+  [374,"Fox Hopyard Golf Club","East Haddam","CT",41.464,-72.388,6,10,185],
+  [375,"Oglebay Resort (Speidel)","Wheeling","WV",40.069,-80.686,7,10,85],
+  [376,"Hershey Country Club (East)","Hershey","PA",40.281,-76.651,8,10,65],
+  [377,"Jekyll Island (Pine Lakes)","Jekyll Island","GA",31.07,-81.43,13,18,95],
+  [378,"Eagle Glen","Farwell","MI",43.835,-84.687,19,26,95],
+  [379,"Gaylord Springs Golf Links","Nashville","TN",36.239,-86.704,5,10,125],
+  [380,"Hammock Dunes (Creek)","Palm Coast","FL",29.539,-81.212,22,41,95],
+  [381,"Wyncote Golf Club","Oxford","PA",39.828,-75.923,9,10,85],
+  [382,"Red Tail Golf Club","Sorrento","FL",28.798,-81.565,23,41,95],
+  [383,"Bowes Creek Country Club","Elgin","IL",42.005,-88.361,25,54,65],
+  [384,"Bolingbrook Golf Club","Bolingbrook","IL",41.714,-88.092,26,54,65],
+  [385,"Glade Springs (Stonehaven)","Daniels","WV",37.671,-81.141,8,10,65],
+  [386,"Bear Trace at Harrison Bay","Harrison","TN",35.133,-85.12,6,10,65],
+  [387,"Stonehenge Golf Club","Fairfield Glade","TN",36.0,-84.918,7,10,145],
+  [388,"Whitetail Ridge Golf Club","Yorkville","IL",41.666,-88.493,27,54,95],
+  [389,"Arthur Hills at Boyne Highlands","Harbor Springs","MI",45.387,-84.919,20,26,85],
+  [390,"Red Tail Golf Club","Devens","MA",42.551,-71.586,7,10,115],
+  [391,"Heritage Hills Golf Resort","York","PA",39.943,-76.727,10,10,75],
+  [392,"Crystal Springs Golf Club","Hamburg","NJ",41.153,-74.582,5,10,75],
+  [393,"Purdue University (Ackerman-Allen)","West Lafayette","IN",40.432,-86.934,9,16,55],
+  [394,"Shore Gate Golf Club","Ocean View","NJ",39.161,-74.704,6,10,75],
+  [395,"Piper Glen Golf Club","Springfield","IL",39.722,-89.665,28,54,125],
+  [396,"Bryan Park (Champions)","Browns Summit","NC",36.215,-79.726,16,20,75],
+  [397,"Bear Trace at Ross Creek","Clifton","TN",35.39,-87.978,8,10,85],
+  [398,"Greystone Golf Club","Dickson","TN",36.072,-87.371,9,10,75],
+  [399,"Potomac Shores Golf Club","Potomac Shores","VA",38.505,-77.303,7,10,95],
+  [400,"Prairie Bluff Golf Club","Crest Hill","IL",41.434,-88.228,29,54,85],
+  [401,"Wild Rock","Wisconsin Dells","WI",43.629,-89.772,21,29,85],
+  [402,"The Bear at Grand Traverse Resort","Acme","MI",44.82,-85.521,21,26,85],
+  [403,"Crow Valley Golf Club","Bettendorf","IA",41.544,-90.501,5,14,null],
+  [404,"Seven Bridges Golf Club","Woodridge","IL",41.739,-88.03,30,54,null],
+  [405,"Bull Run Golf Club","Haymarket","VA",38.812,-77.627,8,10,75],
+  [406,"The Fortress","Frankenmuth","MI",43.331,-83.738,22,26,165],
+  [407,"Forest Hills Golf Course","Augusta","GA",33.471,-82.01,14,18,65],
+  [408,"Lonnie Poole Golf Course","Raleigh","NC",35.788,-78.697,17,20,85],
+  [409,"UNC Finley Golf Club","Chapel Hill","NC",35.913,-79.052,18,20,175],
+  [410,"Grandover Resort (East)","Greensboro","NC",36.01,-79.949,19,20,95],
+  [411,"The Challenge Golf Club","Graham","NC",36.078,-79.401,20,20,75],
+  [412,"Leatherstocking Golf Course","Cooperstown","NY",42.7,-74.924,10,10,null],
+  [413,"George Young Recreation","Gaastra","MI",46.07,-89.018,23,26,null],
+  [414,"Timber Trace","Pinckney","MI",42.456,-83.939,24,26,null],
+  [415,"Ghost Creek at Pumpkin Ridge","North Plains","OR",45.602,-122.994,15,19,75],
+  [416,"Mohegan Sun Golf Club","Baltic","CT",41.547,-72.106,7,10,65],
+  [417,"Deer Creek Golf Club","Overland Park","KS",38.897,-94.682,3,10,55],
+  [418,"Lost Key Golf Club","Perdido Key","FL",30.294,-87.423,24,41,85],
+  [419,"Chalet Hills Golf Club","Cary","IL",42.211,-88.229,31,54,45],
+  [420,"Raspberry Falls Golf & Hunt Club","Leesburg","VA",39.122,-77.614,9,10,null],
+  [421,"The Legend at Shanty Creek","Bellaire","MI",44.983,-85.202,25,26,185],
+  [422,"Shepherds Crook Golf Course","Zion","IL",42.446,-87.836,32,54,75],
+  [423,"Keswick Hall (Full Cry)","Keswick","VA",38.053,-78.447,10,10,145],
+  [424,"Thornberry Creek at Oneida","Oneida","WI",44.497,-88.042,22,29,95],
+  [425,"RainDance National","Windsor","CO",40.479,-104.915,11,18,null],
+  [426,"Lakota Links Golf Club","New Castle","CO",39.569,-107.538,12,18,75],
+  [427,"Colorado National Golf Club","Erie","CO",40.051,-105.063,13,18,75],
+  [428,"The Club at Ravenna","Littleton","CO",39.549,-105.148,14,18,null],
+  [429,"Osage National Golf Resort","Lake Ozark","MO",38.197,-92.629,7,10,75],
+  [430,"Washington County","Hartford","WI",43.329,-88.375,23,29,75],
+  [431,"Shaker Hills Country Club","Harvard","MA",42.485,-71.575,8,10,185],
+  [432,"Blackstone National Golf Club","Sutton","MA",42.124,-71.759,9,10,185],
+  [433,"Grand Geneva Resort (Brute)","Lake Geneva","WI",42.583,-88.434,24,29,195],
+  [434,"Coyote Crossing Golf Club","West Lafayette","IN",40.454,-86.956,10,16,65],
+  [435,"Farm Neck Golf Club","Oak Bluffs","MA",41.467,-70.546,10,10,95],
+  [436,"Pole Creek Golf Club","Winter Park","CO",39.906,-105.763,15,18,75],
+  [437,"Oxford Greens","Oxford","CT",41.408,-73.143,8,10,null],
+  [438,"Richter Park Golf Course","Danbury","CT",41.374,-73.496,9,10,null],
+  [439,"Ruffled Feathers Golf Club","Lemont","IL",41.673,-88.027,33,54,null],
+  [440,"Keney Park Golf Course","Hartford","CT",41.793,-72.678,10,10,null],
+  [441,"Juliette Falls Golf Club","Dunnellon","FL",29.055,-82.461,25,41,75],
+  [442,"Penobscot Valley Country Club","Orono","ME",44.892,-68.671,8,10,null],
+  [443,"Mt. Washington Golf Course","Bretton Woods","NH",44.265,-71.435,1,10,null],
+  [444,"Atkinson Resort","Atkinson","NH",42.836,-71.152,2,10,55],
+  [445,"Owl\'s Nest Resort","Campton","NH",43.849,-71.618,3,10,95],
+  [446,"Portsmouth Country Club","Greenland","NH",43.043,-70.844,4,10,95],
+  [447,"Cherokee Run Golf Club","Conyers","GA",33.671,-84.006,15,18,65],
+  [448,"The Shattuck Golf Club","Jaffrey","NH",42.817,-72.027,5,10,null],
+  [449,"North Conway Country Club","North Conway","NH",44.053,-71.13,6,10,null],
+  [450,"Canterbury Woods Country Club","Canterbury","NH",43.338,-71.563,7,10,null],
+  [451,"Eastman Golf Links","Grantham","NH",43.494,-72.112,8,10,null],
+  [452,"Geneva National (Eagle)","Lake Geneva","WI",42.596,-88.508,25,29,65],
+  [453,"Breakfast Hill Golf Club","Greenland","NH",43.043,-70.844,9,10,null],
+  [454,"Jay Peak Resort","Jay","VT",44.929,-72.526,5,10,75],
+  [455,"Basin Harbor","Vergennes","VT",44.174,-73.257,6,10,95],
+  [456,"Sugarbush Resort Golf Club","Warren","VT",44.133,-72.862,7,10,75],
+  [457,"Eagle Ridge Resort - North Course","Galena","IL",42.432,-90.378,34,54,55],
+  [458,"St James Bay Golf & Country Club","Carrabelle","FL",29.862,-84.661,26,41,65],
+  [459,"Equinox Golf Resort & Spa","Manchester","VT",43.168,-73.07,8,10,125],
+  [460,"Fox Run Golf Club","Ludlow","VT",43.397,-72.706,9,10,null],
+  [461,"Okemo Valley Golf Club","Ludlow","VT",43.397,-72.706,10,10,null],
+  [462,"Crown Golf Course","Traverse City","MI",44.763,-85.62,26,26,155],
+  [463,"Montaup Country Club","Portsmouth","RI",41.612,-71.24,2,10,135],
+  [464,"Richmond Country Club","Richmond","RI",41.48,-71.637,3,10,null],
+  [465,"Harrison Hills Golf Club","Attica","IN",40.283,-87.246,11,16,65],
+  [466,"Valley Country Club","Warwick","RI",41.729,-71.456,4,10,null],
+  [467,"Geneva National (Hawk)","Lake Geneva","WI",42.596,-88.508,26,29,85],
+  [468,"Laurel Lane Country Club","West Kingston","RI",41.499,-71.59,5,10,65],
+  [469,"Cranston Country Club","Cranston","RI",41.781,-71.437,6,10,75],
+  [470,"Odyssey Golf Club","Tinley Park","IL",41.573,-87.787,35,54,75],
+  [471,"Jamestown Golf & Country Club","Jamestown","RI",41.499,-71.375,7,10,95],
+  [472,"University of Maryland Golf Course","College Park","MD",38.985,-76.943,5,10,65],
+  [473,"Eagle Ridge Resort - South Course","Galena","IL",42.432,-90.378,36,54,65],
+  [474,"The Rookery (North)","Milton","DE",38.771,-75.31,2,9,65],
+  [475,"Perdido Bay Golf Course","Pensacola","FL",30.462,-87.323,27,41,55],
+  [476,"The Rookery (South)","Milton","DE",38.771,-75.31,3,9,65],
+  [477,"Palmer Hills Golf Course","Bettendorf","IA",41.521,-90.472,6,14,65],
+  [478,"Kings Creek Country Club","Rehoboth Beach","DE",38.716,-75.082,4,9,175],
+  [479,"Wild Quail Golf & Country Club","Wyoming","DE",39.115,-75.562,5,9,145],
+  [480,"Windance Country Club","Gulfport","MS",30.372,-89.091,7,10,245],
+  [481,"Cobblestone Golf Course","Acworth","GA",34.065,-84.677,16,18,65],
+  [482,"Big Creek Golf & Country Club","Mountain Home","AR",36.335,-92.385,1,9,95],
+  [483,"Audubon Park Golf Course","New Orleans","LA",29.928,-90.123,4,10,95],
+  [484,"English Turn Golf & Country Club","New Orleans","LA",29.834,-89.988,5,10,65],
+  [485,"Geneva National (Bear)","Lake Geneva","WI",42.596,-88.508,27,29,115],
+  [486,"Tamahka Trails Golf Club","Marksville","LA",31.129,-92.068,6,10,115],
+  [487,"Jacksonville Beach Golf Links","Jacksonville Beach","FL",30.28,-81.403,28,41,55],
+  [488,"Gray Plantation Golf Club","Lake Charles","LA",30.198,-93.199,7,10,145],
+  [489,"The Wetlands Golf Course","Lafayette","LA",30.224,-92.02,8,10,95],
+  [490,"Bayou Oaks at City Park (South)","New Orleans","LA",29.993,-90.098,9,10,null],
+  [491,"Fox Creek Golf Club","Edwardsville","IL",38.811,-89.953,37,54,75],
+  [492,"Cypress Bend Golf Resort","Many","LA",31.573,-93.488,10,10,65],
+  [493,"Fairways of Woodside","Plover","WI",44.462,-89.531,28,29,55],
+  [494,"Heritage Hill Golf Club","Shepherdsville","KY",37.99,-85.72,1,10,65],
+  [495,"Olive Glenn Golf & Country Club","Cody","WY",44.525,-109.057,3,9,95],
+  [496,"Belterra Casino Golf Course","Florence","IN",38.806,-84.946,12,16,75],
+  [497,"Sun Valley Resort (Trail Creek)","Sun Valley","ID",43.697,-114.351,3,10,75],
+  [498,"TimberStone Golf Course","Caldwell","ID",43.663,-116.687,4,10,45],
+  [499,"The Idaho Club","Sandpoint","ID",48.279,-116.553,5,10,75],
+  [500,"St Johns Golf & Country Club","St Augustine","FL",29.881,-81.33,29,41,65],
+  [501,"BanBury Golf Club","Eagle","ID",43.694,-116.354,6,10,null],
+  [502,"Elkhorn Ridge Golf Club","Spearfish","SD",44.49,-103.859,1,9,55],
+  [503,"Willow Run Golf Course","Sioux Falls","SD",43.548,-96.774,2,9,65],
+  [504,"The Bluffs","Vermillion","SD",42.779,-96.929,3,9,55],
+  [505,"Southern Hills Golf Course","Hot Springs","SD",43.431,-103.479,4,9,65],
+  [506,"The Prairie Club at Fountain","Fountain","SD",44.6,-103.0,5,9,65],
+  [507,"Meadowbrook Golf Course","Rapid City","SD",44.081,-103.231,6,9,65],
+  [508,"Hidden Creek Golf Club","Navarre","FL",30.401,-86.863,30,41,65],
+  [509,"Prairie Green Golf Course","Sioux Falls","SD",43.548,-96.774,7,9,95],
+  [510,"Gleneagles Country Club","Lemont","IL",41.673,-88.027,38,54,95],
+  [511,"Cattail Crossing Golf Course","Watertown","SD",44.899,-97.114,8,9,65],
+  [512,"The Links of North Dakota","Williston","ND",48.147,-103.618,3,10,55],
+  [513,"Mirimichi Golf Course","Millington","TN",35.32,-89.878,10,10,75],
+  [514,"Meadow Lake Golf Course","Columbia Falls","MT",48.373,-114.182,5,10,null],
+  [515,"Southwood Golf Club","Tallahassee","FL",30.354,-84.198,31,41,65],
+  [516,"Bridger Creek Golf Course","Bozeman","MT",45.679,-110.912,6,10,65],
+  [517,"Big Sky Resort","Big Sky","MT",45.286,-111.444,7,10,95],
+  [518,"Eagle Bend Golf Club","Bigfork","MT",48.065,-114.082,8,10,75],
+  [519,"Northern Pines Golf Club","Kalispell","MT",48.196,-114.312,9,10,95],
+  [520,"Grand Geneva Resort (Highlands)","Lake Geneva","WI",42.583,-88.434,29,29,95],
+  [521,"Buffalo Hill Golf Club","Kalispell","MT",48.196,-114.312,10,10,75],
+  [522,"Stone Creek Golf Club","Ocala","FL",29.187,-82.133,32,41,55],
+  [523,"Bartlett Hills Golf Course","Bartlett","IL",41.995,-88.182,39,54,65],
+  [524,"Legends Resort (Moorland)","Myrtle Beach","SC",33.869,-78.963,17,20,95],
+  [525,"Duck Creek Golf Club","Bettendorf","IA",41.553,-90.543,7,14,95],
+  [526,"Long Bay Golf Club","North Myrtle Beach","SC",33.906,-78.693,18,20,85],
+  [527,"Grande Dunes Resort Club","Myrtle Beach","SC",33.779,-78.759,19,20,65],
+  [528,"Mystic Creek Golf Club","El Dorado","AR",33.208,-92.666,2,9,65],
+  [529,"Stonebridge Golf Club","Rome","GA",34.258,-85.165,17,18,55],
+  [530,"Hot Springs Country Club","Hot Springs","AR",34.503,-93.055,3,9,75],
+  [531,"Tiger Point Golf Club","Gulf Breeze","FL",30.366,-87.161,33,41,55],
+  [532,"Mountain Ranch Golf Club","Fairfield Bay","AR",35.582,-92.281,4,9,75],
+  [533,"Stonebridge Meadows Golf Club","Fayetteville","AR",36.082,-94.157,5,9,55],
+  [534,"The Ridges at Village Creek","Wynne","AR",35.226,-90.783,6,9,65],
+  [535,"Big Cedar Lodge (Buffalo Ridge)","Ridgedale","AR",36.603,-93.29,7,9,85],
+  [536,"Foxbend Golf Course","Oswego","IL",41.641,-88.425,40,54,75],
+  [537,"DeGray Lake Resort Golf Course","Bismarck","AR",34.167,-93.182,8,9,95],
+  [538,"SummerBrooke Golf Club","Gainesville","FL",29.71,-82.348,34,41,45],
+  [539,"Rebsamen Golf Course","Little Rock","AR",34.763,-92.322,9,9,95],
+  [540,"Kearney Hill Golf Links","Lexington","KY",38.083,-84.475,2,10,95],
+  [541,"University Club of Kentucky (Big Blue)","Lexington","KY",38.038,-84.504,3,10,55],
+  [542,"The Golf Courses at Kenton County (Fox Run)","Independence","KY",38.951,-84.544,4,10,295],
+  [543,"Dale Hollow Lake State Resort Park","Burkesville","KY",36.793,-85.369,5,10,null],
+  [544,"Weissinger Hills Golf Course","Shelbyville","KY",38.211,-85.225,6,10,75],
+  [545,"Black Bear Golf Club","Mount Dora","FL",28.814,-81.641,35,41,55],
+  [546,"Amana Colonies Golf Course","Amana","IA",41.799,-91.869,8,14,75],
+  [547,"Gibson Bay Golf Course","Richmond","KY",37.718,-84.301,7,10,85],
+  [548,"Cabin Brook Golf Course","Pikeville","KY",37.479,-82.517,8,10,null],
+  [549,"Lassing Pointe Golf Course","Union","KY",38.947,-84.674,9,10,null],
+  [550,"Quail Chase Golf Course","Louisville","KY",38.164,-85.556,10,10,55],
+  [551,"Eagle Dunes Golf Club","Sorrento","FL",28.818,-81.582,36,41,55],
+  [552,"Glynns Creek Golf Course","Long Grove","IA",41.685,-90.333,9,14,65],
+  [553,"Circling Raven Golf Club","Worley","ID",47.549,-116.906,7,10,55],
+  [554,"Quail Hollow Golf Course","Boise","ID",43.564,-116.202,8,10,75],
+  [555,"George Dunne National Golf Course","Oak Forest","IL",41.614,-87.747,41,54,55],
+  [556,"Falcon Crest Golf Club","Kuna","ID",43.492,-116.421,9,10,85],
+  [557,"Hidden Lakes Golf Club","New Port Richey","FL",28.244,-82.731,37,41,45],
+  [558,"Ridgecrest Golf Club","Nampa","ID",43.574,-116.563,10,10,55],
+  [559,"Hart Ranch Golf Course","Rapid City","SD",44.081,-103.231,9,9,85],
+  [560,"RTJ Silver Lakes (Heartbreaker/Backbreaker)","Glencoe","AL",33.956,-86.212,9,10,75],
+  [561,"The Preserve on Rathbun Lake","Moravia","IA",40.89,-92.83,10,14,85],
+  [562,"Kiva Dunes Golf Course","Gulf Shores","AL",30.246,-87.686,10,10,95],
+  [563,"Tanglewood Golf Club","Milton","FL",30.636,-87.04,38,41,45],
+  [564,"Tunica National Golf & Tennis","Tunica","MS",34.685,-90.374,8,10,65],
+  [565,"Arrowhead Golf Club","Wheaton","IL",41.875,-88.154,42,54,185],
+  [566,"USA Golf Course","Columbus","GA",32.46,-84.988,18,18,45],
+  [567,"Bridges Golf Club at Hollywood Casino","Bay St. Louis","MS",30.31,-89.337,9,10,165],
+  [568,"Stone Canyon Golf Club","Blue Springs","MO",39.016,-94.282,8,10,55],
+  [569,"Ledgestone Country Club","Branson West","MO",36.64,-93.355,9,10,65],
+  [570,"Hyde Park Golf Club","Jacksonville","FL",30.278,-81.675,39,41,45],
+  [571,"Buffalo Ridge Springs","Ridgedale","MO",36.603,-93.294,10,10,55],
+  [572,"The Refuge Golf Course","Flowood","MS",32.341,-90.102,10,10,65],
+  [573,"PrairieView Golf Club","Byron","IL",42.113,-89.291,43,54,55],
+  [574,"Desert Canyon Golf Resort","Orondo","WA",47.745,-120.208,10,10,55],
+  [575,"Tokatee Golf Club","Blue River","OR",44.157,-122.347,16,19,65],
+  [576,"Running Y Ranch Resort","Klamath Falls","OR",42.097,-121.673,17,19,55],
+  [577,"Juniper Golf Course","Redmond","OR",44.295,-121.167,18,19,55],
+  [578,"Bar Run Golf Links","Roseburg","OR",43.217,-123.352,19,19,45],
+  [579,"Gateway National Golf Links","Madison","IL",38.683,-90.173,44,54,45],
+  [580,"Sultan\'s Run Golf Club","Jasper","IN",38.352,-86.93,13,16,45],
+  [581,"Purdue University (Kampen)","West Lafayette","IN",40.432,-86.934,14,16,95],
+  [582,"Otter Creek Golf Course","Columbus","IN",39.174,-85.919,15,16,45],
+  [583,"The Fort Golf Resort","Indianapolis","IN",39.878,-86.07,16,16,85],
+  [584,"Bonnie Brook Golf Course","Waukegan","IL",42.368,-87.862,45,54,75],
+  [585,"Bay Hill Club & Lodge","Orlando","FL",28.449,-81.501,40,41,65],
+  [586,"Black Diamond Ranch (Quarry)","Lecanto","FL",28.857,-82.488,41,41,55],
+  [587,"Rustic Canyon","Moorpark","CA",34.284,-118.869,20,20,55],
+  [588,"Village Links of Glen Ellyn","Glen Ellyn","IL",41.874,-88.062,46,54,55],
+  [589,"Memorial Park","Houston","TX",29.765,-95.421,9,20,65],
+  [590,"Rawls Course at Texas Tech","Lubbock","TX",33.573,-101.887,10,20,65],
+  [591,"River Vale Country Club","River Vale","NJ",41.012,-74.132,7,10,75],
+  [592,"Little Mountain Country Club","Concord","OH",41.69,-81.235,6,10,55],
+  [593,"Rush Creek Golf Club","Maple Grove","MN",45.112,-93.436,7,10,55],
+  [594,"Schaumburg Golf Club","Schaumburg","IL",42.033,-88.095,47,54,55],
+  [595,"Wild Marsh Golf Club","Buffalo","MN",45.183,-93.874,8,10,null],
+  [596,"Edinburgh USA","Brooklyn Park","MN",45.104,-93.41,9,10,55],
+  [597,"StoneRidge Golf Club","Stillwater","MN",44.914,-92.877,10,10,45],
+  [598,"Buffalo Dunes Golf Course","Garden City","KS",37.971,-100.872,4,10,55],
+  [599,"Sky Mountain Golf Course","Hurricane","UT",37.176,-113.298,10,10,65],
+  [600,"Hickory Ridge Golf Course","Carbondale","IL",37.726,-89.173,48,54,55],
+  [601,"Bowling Green Golf Club","Oak Ridge","NJ",41.029,-74.51,8,10,45],
+  [602,"LBI National Golf & Resort","Little Egg Harbor","NJ",39.594,-74.349,9,10,85],
+  [603,"Vineyard National Golf Course","Egg Harbor City","NJ",39.522,-74.65,10,10,55],
+  [604,"Redlands Mesa Golf Course","Grand Junction","CO",39.093,-108.671,16,18,55],
+  [605,"Grand Elk Golf Club","Granby","CO",40.109,-105.939,17,18,55],
+  [606,"Waveland Golf Course","Des Moines","IA",41.6,-93.67,11,14,55],
+  [607,"Riverdale (Dunes)","Brighton","CO",39.988,-104.831,18,18,55],
+  [608,"Lakeview Resort (Lakeview)","Morgantown","WV",39.691,-79.973,9,10,45],
+  [609,"El Paso Golf Club","El Paso","IL",40.739,-89.014,49,54,45],
+  [610,"Raven Golf Club at Snowshoe","Snowshoe","WV",38.382,-80.01,10,10,55],
+  [611,"Fowler\'s Mill Golf Course","Chesterland","OH",41.525,-81.339,7,10,65],
+  [612,"Boulder Creek Golf Club","Streetsboro","OH",41.24,-81.347,8,10,45],
+  [613,"Manakiki Golf Course","Willoughby","OH",41.642,-81.421,9,10,45],
+  [614,"Sleepy Hollow Golf Course","Brecksville","OH",41.319,-81.631,10,10,55],
+  [615,"Deer Creek Golf Club","University Park","IL",41.448,-87.726,50,54,85],
+  [616,"Dub\'s Dread Golf Club","Kansas City","KS",39.095,-94.591,5,10,75],
+  [617,"Sand Creek Station","Newton","KS",38.048,-97.345,6,10,85],
+  [618,"Ironhorse Golf Club","Leawood","KS",38.917,-94.627,7,10,65],
+  [619,"Sycamore Ridge Golf Course","Spring Hill","KS",38.751,-94.824,8,10,75],
+  [620,"Falcon Lakes Golf Club","Basehor","KS",39.137,-94.929,9,10,65],
+  [621,"Spencer T. Olin Golf Course","East Alton","IL",38.889,-90.103,51,54,65],
+  [622,"Auburn Hills Golf Course","Wichita","KS",37.693,-97.394,10,10,55],
+  [623,"Lincoln Park Golf Course (East)","Oklahoma City","OK",35.509,-97.509,6,10,65],
+  [624,"Lake Hefner Golf Club (North)","Oklahoma City","OK",35.578,-97.572,7,10,85],
+  [625,"Finkbine Golf Course","Iowa City","IA",41.667,-91.578,12,14,75],
+  [626,"WinStar Golf Course","Thackerville","OK",33.809,-97.138,8,10,85],
+  [627,"Earlywine Golf Club (North)","Oklahoma City","OK",35.394,-97.588,9,10,65],
+  [628,"Shangri-La Golf Resort","Afton","OK",36.695,-94.969,10,10,65],
+  [629,"The Championship at University of New Mexico","Albuquerque","NM",35.074,-106.628,6,10,75],
+  [630,"Silver Ridge Golf Club","Oregon","IL",41.98,-89.317,52,54,75],
+  [631,"Santa Ana Golf Club","Santa Ana Pueblo","NM",35.297,-106.665,7,10,75],
+  [632,"Veenker Memorial Golf Course","Ames","IA",42.038,-93.654,13,14,65],
+  [633,"Piñon Hills Golf Course","Farmington","NM",36.737,-108.196,8,10,null],
+  [634,"Cochiti Golf Club","Cochiti Lake","NM",35.644,-106.319,9,10,55],
+  [635,"Sierra del Rio Golf Course","Elephant Butte","NM",33.142,-107.2,10,10,55],
+  [636,"Moose Run Golf Course (Creek)","Anchorage","AK",61.228,-149.82,1,10,65],
+  [637,"Moose Run Golf Course (Hill)","Anchorage","AK",61.228,-149.82,2,10,55],
+  [638,"Lick Creek Golf Course","Pekin","IL",40.523,-89.628,53,54,65],
+  [639,"Settlers Bay Golf Course","Wasilla","AK",61.581,-149.441,3,10,45],
+  [640,"Eagleglen Golf Course","Anchorage","AK",61.228,-149.82,4,10,35],
+  [641,"Brown Deer Golf Club","Coralville","IA",41.7,-91.585,14,14,35],
+  [642,"Palmer Golf Course","Palmer","AK",61.6,-149.114,5,10,35],
+  [643,"Anchorage Golf Course","Anchorage","AK",61.228,-149.82,6,10,35],
+  [644,"Fairbanks Golf & Country Club","Fairbanks","AK",64.837,-147.716,7,10,35],
+  [645,"Atkins Golf Club (U of I)","Urbana","IL",40.101,-88.235,54,54,35],
+  [646,"Birch Ridge Golf Course","Soldotna","AK",60.487,-151.053,8,10,75],
+  [647,"North Star Golf Club","Fairbanks","AK",64.837,-147.716,9,10,65],
+  [648,"Kenai Golf Course","Kenai","AK",60.554,-151.259,10,10,55],
+  [649,"Cowboys Golf Club","Grapevine","TX",32.917,-97.137,11,20,55],
+  [650,"Texas Star Golf Course","Euless","TX",32.838,-97.095,12,20,45],
+  [651,"Waterchase Golf Club","Fort Worth","TX",32.743,-97.259,13,20,45],
+  [652,"Tierra Verde Golf Club","Arlington","TX",32.66,-97.052,14,20,65],
+  [653,"Hawks Creek Golf Club","Westworth Village","TX",32.744,-97.401,15,20,55],
+  [654,"Tangle Ridge","Grand Prairie","TX",32.623,-96.99,16,20,75],
+  [655,"Firewheel Golf Park (Bridges)","Garland","TX",32.948,-96.573,17,20,45],
+  [656,"Grapevine Golf Course","Grapevine","TX",32.935,-97.046,18,20,55],
+  [657,"Southern Oaks Golf & Tennis","Burleson","TX",32.543,-97.316,19,20,45],
+  [658,"Tour 18 Dallas","Flower Mound","TX",33.014,-97.097,20,20,45],
+  [659,"Whiskey Creek Golf Club","Ijamsville","MD",39.333,-77.353,6,10,145],
+  [660,"Rocky Gap Casino Resort","Flintstone","MD",39.692,-78.67,7,10,55],
+  [661,"Waverly Woods Golf Club","Marriottsville","MD",39.36,-76.922,8,10,75],
+  [662,"Worthington Manor Golf Club","Urbana","MD",39.362,-77.337,9,10,55],
+  [663,"Musket Ridge Golf Club","Myersville","MD",39.506,-77.565,10,10,45],
+  [664,"Bear Trap Dunes","Ocean View","DE",38.541,-75.084,6,9,45],
+  [665,"Heritage Shores Golf Club","Bridgeville","DE",38.749,-75.615,7,9,65],
+  [666,"Deerfield Golf Club","Newark","DE",39.701,-75.757,8,9,75],
+  [667,"Cripple Creek Golf & Country Club","Dagsboro","DE",38.537,-75.248,9,9,85],
+  [668,"Triggs Memorial Golf Course","Providence","RI",41.827,-71.462,8,10,null],
+  [669,"Winnapaug Golf Course","Westerly","RI",41.35,-71.827,9,10,95],
+  [670,"Meadow Brook Golf Club","Richmond","RI",41.48,-71.637,10,10,75],
+  [671,"Natanis Golf Course (Tomahawk)","Vassalboro","ME",44.449,-69.668,9,10,65],
+  [672,"Dunegrass Golf Club","Old Orchard Beach","ME",43.517,-70.375,10,10,null],
+  [673,"King\'s Walk Golf Course","Grand Forks","ND",47.925,-97.033,4,10,55],
+  [674,"Osgood Golf Course","Fargo","ND",46.877,-96.789,5,10,245],
+  [675,"Prairiewood Golf Course","Fargo","ND",46.877,-96.789,6,10,175],
+  [676,"Tom O\'Leary Golf Course","Bismarck","ND",46.82,-100.779,7,10,145],
+  [677,"Riverwood Golf Course","Bismarck","ND",46.82,-100.779,8,10,125],
+  [678,"Rose Creek Golf Course","Fargo","ND",46.877,-96.789,9,10,135],
+  [679,"Lincoln Golf Course","Grand Forks","ND",47.925,-97.033,10,10,175],
+  [680,"Rochelle Ranch Golf Course","Rawlins","WY",41.791,-107.24,4,9,null],
+  [681,"Bell Nob Golf Course","Gillette","WY",44.291,-105.502,5,9,245],
+  [682,"White Mountain Golf Course","Rock Springs","WY",41.587,-109.203,6,9,215],
+  [683,"Purple Sage Golf Course","Evanston","WY",41.27,-110.963,7,9,195],
+  [684,"Kendrick Golf Course","Sheridan","WY",44.799,-106.954,8,9,145],
+  [685,"Airport Golf Club","Cheyenne","WY",41.154,-104.82,9,9,225],
+  [686,"World Tour Golf Links","Myrtle Beach","SC",33.754,-78.916,20,20,75],
+  [687,"Wilderness Ridge Golf Club","Lincoln","NE",40.772,-96.753,7,10,85],
+  [688,"Montcalm Golf Club","Enfield","NH",43.636,-72.149,10,10,65],
+  [689,"Iron Horse Golf Club","Ashland","NE",41.034,-96.368,8,10,55],
+  [690,"Indian Creek Golf Course","Omaha","NE",41.342,-96.196,9,10,55],
+  [691,"Bayside Golf Course","Ashland","NE",41.034,-96.368,10,10,165]
+];
+
+const STATE_NAMES = {
+  AK:'Alaska',AL:'Alabama',AR:'Arkansas',AZ:'Arizona',CA:'California',
+  CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',
+  HI:'Hawaii',IA:'Iowa',ID:'Idaho',IL:'Illinois',IN:'Indiana',
+  KS:'Kansas',KY:'Kentucky',LA:'Louisiana',MA:'Massachusetts',MD:'Maryland',
+  ME:'Maine',MI:'Michigan',MN:'Minnesota',MO:'Missouri',MS:'Mississippi',
+  MT:'Montana',NC:'North Carolina',ND:'North Dakota',NE:'Nebraska',NH:'New Hampshire',
+  NJ:'New Jersey',NM:'New Mexico',NV:'Nevada',NY:'New York',OH:'Ohio',
+  OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VA:'Virginia',
+  VT:'Vermont',WA:'Washington',WI:'Wisconsin',WV:'West Virginia',WY:'Wyoming'
+};
+
+const PER_PAGE = 50;
+let filtered = [...COURSES];
+let page = 1;
+let activeStates = new Set();
+let topFilter = 0;
+let priceFilter = 0;
+let markerRefs = [];
+
+// ── State dropdown ────────────────────────────────────────────────────────────
+const allStates = [...new Set(COURSES.map(c=>c[3]))].sort();
+const stateOptsEl = document.getElementById('state-opts');
+
+function buildStateOpts(filter='') {
+  const fl = filter.toLowerCase();
+  const allOpts = [{code:'',name:'All States'}, ...allStates.map(s=>({code:s,name:STATE_NAMES[s]||s}))];
+  const filtered = allOpts.filter(o=>!fl||o.name.toLowerCase().includes(fl)||o.code.toLowerCase().includes(fl));
+  // Separate: "All States" always first, then checked states, then unchecked
+  const allStatesOpt = filtered.filter(o=>o.code==='');
+  const checked = filtered.filter(o=>o.code!==''&&activeStates.has(o.code));
+  const unchecked = filtered.filter(o=>o.code!==''&&!activeStates.has(o.code));
+  const sorted = [...allStatesOpt, ...checked, ...unchecked];
+  stateOptsEl.innerHTML = sorted.map(o=>{
+    const sel = o.code===''?activeStates.size===0:activeStates.has(o.code);
+    const divider = o.code===checked[0]?.code&&checked.length>0 ? ' style="border-top:2px solid #c9a84c44"' : '';
+    return `<div class="state-opt${sel?' selected':''}"${divider} onclick="toggleState('${o.code}')"><div class="state-check">${sel?'✓':''}</div>${o.name||'All States'}</div>`;
+  }).join('');
+}
+buildStateOpts();
+
+function toggleStateDD(){
+  const dd=document.getElementById('state-dropdown');
+  if(dd.classList.toggle('open')){
+    document.getElementById('state-filter-input').value='';
+    buildStateOpts();
+    setTimeout(()=>document.getElementById('state-filter-input').focus(),50);
+  }
+}
+function filterStateList(){ buildStateOpts(document.getElementById('state-filter-input').value); }
+function toggleState(code){
+  if(code==='') activeStates.clear();
+  else if(activeStates.has(code)) activeStates.delete(code);
+  else activeStates.add(code);
+  buildStateOpts(document.getElementById('state-filter-input').value);
+  updateStateLabel(); updateClearBtn(); applyFilters();
+}
+function updateStateLabel(){
+  const inp=document.getElementById('state-search');
+  if(activeStates.size===0){ inp.value=''; inp.placeholder='All States ▾'; }
+  else if(activeStates.size===1){ inp.value=STATE_NAMES[[...activeStates][0]]||[...activeStates][0]; }
+  else { inp.value=`${activeStates.size} states selected`; }
+}
+document.addEventListener('click',e=>{
+  if(!document.getElementById('state-wrap').contains(e.target))
+    document.getElementById('state-dropdown').classList.remove('open');
+});
+
+// ── Colours ──────────────────────────────────────────────────────────────────
+function overallColor(r){ return r<=10?{bg:'#b8860b',text:'#fff'}:r<=25?{bg:'#555',text:'#fff'}:r<=50?{bg:'#8B4513',text:'#fff'}:r<=100?{bg:'#2e7d50',text:'#fff'}:{bg:'#2a5a8a',text:'#fff'}; }
+function stateColor(sr){ return sr===1?{bg:'#b8860b',text:'#fff'}:sr<=3?{bg:'#555',text:'#fff'}:sr<=5?{bg:'#8B4513',text:'#fff'}:sr<=10?{bg:'#2e7d50',text:'#fff'}:{bg:'#2a5a8a',text:'#fff'}; }
+function listColor(r){ return r<=10?'#8a6a00':r<=25?'#444':r<=50?'#7a3010':r<=100?'#1a6040':'#1a3a6a'; }
+function rankClass(r){ return r<=10?'top10':r<=25?'top25':r<=50?'top50':r<=100?'top100':''; }
+function srColor(sr){ return sr===1?'#8a6a00':sr<=3?'#555':'#888'; }
+function priceColor(p){ return p>=400?'#8B4513':p>=250?'#555':p>=150?'#1a6040':'#1a3a6a'; }
+
+// ── Dot sizing ────────────────────────────────────────────────────────────────
+function dotBase(rank,sr,lbl,stm){
+  if(stm){ return sr===1?26:sr<=3?22:sr<=5?18:sr<=10?15:12; }
+  if(lbl){ return rank<=10?26:rank<=25?22:rank<=50?18:rank<=100?15:12; }
+  return rank<=10?16:rank<=50?12:rank<=100?10:8;
+}
+function dotSz(rank,sr,zoom,lbl,stm){ return dotBase(rank,sr,lbl,stm)+Math.max(0,zoom-4)*2; }
+
+function makeIcon(rank,sr,zoom,showLabel,labelNum,stateMode){
+  const sz=dotSz(rank,sr,zoom,showLabel,stateMode);
+  const col=stateMode?stateColor(sr):overallColor(rank);
+  // thinner border: 1px only
+  const label=(showLabel&&sz>=12)
+    ?`<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:${Math.max(7,Math.round(sz*0.42))}px;font-weight:900;color:${col.text};line-height:1;pointer-events:none">${labelNum}</span>`:'';
+  return L.divIcon({
+    className:'',
+    html:`<div style="position:relative;width:${sz}px;height:${sz}px;border-radius:50%;background:${col.bg};border:1px solid rgba(255,255,255,.5);box-shadow:0 1px 3px rgba(0,0,0,.35);cursor:pointer">${label}</div>`,
+    iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],tooltipAnchor:[0,-sz/2]
+  });
+}
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+const map=L.map('map',{center:[39,-96],zoom:4,scrollWheelZoom:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO',maxZoom:19
+}).addTo(map);
+const markerLayer=L.layerGroup().addTo(map);
+
+function locKey(lat,lon){ return `${lat.toFixed(3)},${lon.toFixed(3)}`; }
+
+function buildMarkers(){
+  const single=activeStates.size===1, showLabel=!!(activeStates.size>0||topFilter), stateMode=single, zoom=map.getZoom();
+  const stacks=new Map();
+  filtered.forEach(c=>{ const k=locKey(c[4],c[5]); if(!stacks.has(k))stacks.set(k,[]); stacks.get(k).push(c); });
+
+  const refs=[];
+  stacks.forEach(stack=>{
+    stack.sort((a,b)=>a[0]-b[0]);
+    const best=stack[0], [rank,name,city,state,lat,lon,sr,stTotal,price]=best;
+    const labelNum=stateMode?sr:rank;
+    const tipLines=stack.map(c=>`${stateMode?`State #${c[6]}`:`#${c[0]}`} — ${c[1]}${c[8]?' ($'+c[8]+')':''}`).join('<br>');
+    const tip=stack.length>1
+      ?`<b>${city}, ${state}</b><br>${tipLines}`
+      :`<b>#${rank} ${name}</b><br>${city}, ${state} · State #${sr}/${stTotal}${price?` · $${price}`:''}`;
+
+    // Higher-ranked courses (lower rank number) get higher zIndexOffset so they sit on top
+    const zOff = Math.max(0, 700 - rank);
+
+    const marker=L.marker([lat,lon],{
+      icon:makeIcon(rank,sr,zoom,showLabel,labelNum,stateMode),
+      riseOnHover:true,
+      zIndexOffset: zOff
+    });
+    marker.bindTooltip(tip,{direction:'top'});
+    marker.on('click',()=>toggleState(state));
+    refs.push({marker,rank,sr});
+  });
+  return refs;
+}
+
+map.on('zoomend',()=>{
+  const zoom=map.getZoom(), single=activeStates.size===1, showLabel=!!(activeStates.size>0||topFilter);
+  markerRefs.forEach(({marker,rank,sr})=>{
+    const lbl=single?sr:rank;
+    marker.setIcon(makeIcon(rank,sr,zoom,showLabel,lbl,single));
+  });
+});
+
+function updateMap(){
+  markerLayer.clearLayers(); markerRefs=buildMarkers();
+  markerRefs.forEach(({marker})=>markerLayer.addLayer(marker)); updateLegend();
+}
+function updateLegend(){
+  const s=activeStates.size===1;
+  ['leg1','leg2','leg3','leg4','leg5'].forEach((id,i)=>{
+    document.getElementById(id).textContent=s?['#1 in state','Top 3','Top 5','Top 10','11+'][i]:['Top 10','Top 25','Top 50','Top 100','101+'][i];
+  });
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function applyFilters(){
+  filtered=COURSES.filter(c=>{
+    const mst=activeStates.size===0||activeStates.has(c[3]);
+    const mtp=!topFilter||c[0]<=topFilter;
+    const price=c[8];
+    let mpr;
+    if(priceFilter===0){ mpr=true; }
+    else if(priceFilter===-1){ mpr=(price===null||price===0); }
+    else { mpr=(price!==null&&price!==0&&price<=priceFilter); }
+    return mst&&mtp&&mpr;
+  });
+  page=1; render(); updateMap();
+  if(filtered.length>0&&filtered.length<COURSES.length){
+    const lats=filtered.map(c=>c[4]),lons=filtered.map(c=>c[5]);
+    map.fitBounds([[Math.min(...lats)-.5,Math.min(...lons)-.5],[Math.max(...lats)+.5,Math.max(...lons)+.5]],{padding:[40,40],maxZoom:12,animate:false});
+  } else map.setView([39,-96],4,{animate:false});
+}
+
+function render(){
+  const total=filtered.length, totalPages=Math.max(1,Math.ceil(total/PER_PAGE));
+  if(page>totalPages) page=totalPages;
+  const start=(page-1)*PER_PAGE, slice=filtered.slice(start,start+PER_PAGE);
+  document.getElementById('count').textContent=`${total}`;
+  document.getElementById('list').innerHTML=slice.map(c=>{
+    const [rank,name,city,state,lat,lon,sr,stTotal,price]=c;
+    const bold=rank<=50?'font-weight:600':'';
+    const priceHtml=price!=null
+      ?`<div class="r-price" style="color:${priceColor(price)}">$${price}</div>`
+      :`<div class="r-price" style="color:#ccc">—</div>`;
+    return `<div class="row ${rankClass(rank)}" onclick="zoomToRow(${lat},${lon})">
+      <div class="r-rank" style="color:${listColor(rank)}">${rank}</div>
+      <div class="r-info"><div class="r-name" style="${bold}" title="${name}">${name}</div><div class="r-loc">${city}, ${state}</div></div>
+      ${priceHtml}
+      <div class="r-sr"><div class="r-sr-num" style="color:${srColor(sr)}">#${sr}</div><div class="r-sr-of">of ${stTotal}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('prev-btn').disabled=page<=1;
+  document.getElementById('next-btn').disabled=page>=totalPages;
+  document.getElementById('page-info').textContent=`${page}/${totalPages} · #${start+1}–${Math.min(start+PER_PAGE,total)}`;
+}
+
+function zoomToRow(lat,lon){ map.setView([lat,lon],13,{animate:true}); }
+function onTopChange(){ topFilter=parseInt(document.getElementById('top-sel').value)||0; updateClearBtn(); applyFilters(); }
+function onPriceChange(){
+  const v=parseInt(document.getElementById('price-range').value);
+  if(v>=650){ priceFilter=0; document.getElementById('price-val').textContent='Any'; }
+  else if(v<=0){ priceFilter=-1; document.getElementById('price-val').textContent='N/A only'; }
+  else{ priceFilter=v; document.getElementById('price-val').textContent='≤$'+v; }
+  updateClearBtn(); applyFilters();
+}
+function clearFilters(){
+  activeStates.clear(); topFilter=0; priceFilter=0;
+  document.getElementById('top-sel').value='';
+  document.getElementById('state-search').value=''; document.getElementById('state-search').placeholder='All States ▾';
+  document.getElementById('price-range').value=650; document.getElementById('price-val').textContent='Any';
+  buildStateOpts(); updateClearBtn(); applyFilters();
+}
+function updateClearBtn(){
+  const anyActive=!!(activeStates.size||topFilter||priceFilter);
+  const btn=document.getElementById('clear-btn');
+  btn.style.color=anyActive?'#8a6a1a':'#c9a84c44';
+  btn.style.borderColor=anyActive?'#c9a84c':'#c9a84c44';
+  btn.style.background=anyActive?'#f0e8d0':'transparent';
+  btn.style.cursor=anyActive?'pointer':'default';
+  btn.style.pointerEvents=anyActive?'auto':'none';
+}
+function changePage(dir){ page+=dir; render(); document.getElementById('list').scrollTop=0; }
+
+applyFilters();
+</script>
+</body>
+</html>
